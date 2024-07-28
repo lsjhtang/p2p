@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"io"
@@ -92,15 +93,16 @@ func (s *FileStore) Read(key string) (io.Reader, error) {
 	return s.readStream(pathKey)
 }
 
-func (s *FileStore) readStream(pathKey PathKey) (r io.Reader, err error) {
+func (s *FileStore) readStream(pathKey PathKey) (io.Reader, error) {
 	fs, err := os.OpenFile(s.fullFileName(pathKey), os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return fs, err
 	}
 	defer fs.Close()
-	_, err = io.Copy(fs, r)
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, fs)
 
-	return r, err
+	return buf, err
 }
 
 func (s *FileStore) fullPathDir(pathKey PathKey) string {

@@ -2,6 +2,8 @@ package store
 
 import (
 	"bytes"
+	"io"
+	"os"
 	"testing"
 )
 
@@ -32,6 +34,15 @@ func TestStore(t *testing.T) {
 	bl := store.Has(key)
 	if !bl {
 		t.Fatalf("store does not have key %s", key)
+	}
+
+	r, err := store.Read(key)
+	if err != nil {
+		t.Fatalf("store read error %s", err)
+	}
+	_, err = io.Copy(os.Stdout, r)
+	if err != nil {
+		t.Fatalf("store read error %s", err)
 	}
 
 	err = store.RemoveAll(key)

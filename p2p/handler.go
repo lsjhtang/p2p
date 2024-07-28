@@ -1,20 +1,20 @@
 package p2p
 
 type Handler interface {
-	handle(peer) error
+	Handle(Peer) error
 }
 
-type HandlerFunc func(peer) error
+type HandlerFunc func(Peer) error
 
 // 处理connet之前的逻辑
-func NOPHandlerFunc(p peer) error {
+func NOPHandlerFunc(p Peer) error {
 
 	return nil
 }
 
-type OnPeer func(peer) error
+type OnPeer func(Peer) error
 
 // 处理connet之后的逻辑
-func DefaultPeerFunc(p peer) error {
+func DefaultPeerFunc(p Peer) error {
 	return nil
 }

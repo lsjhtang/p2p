@@ -9,16 +9,20 @@ import (
 )
 
 type TCPPeer struct {
-	conn     net.Conn
+	net.Conn
 	outbound bool
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
-	return &TCPPeer{conn: conn, outbound: outbound}
+	return &TCPPeer{Conn: conn, outbound: outbound}
 }
 
-func (p *TCPPeer) Close() error {
-	return p.conn.Close()
+func (p *TCPPeer) Send(msg []byte) error {
+	_, err := p.Write(msg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type TCPTransportOpts struct {
@@ -43,7 +47,7 @@ type TCPTransport struct {
 	RPCch    chan RPC
 
 	mu    sync.RWMutex
-	peers map[net.Addr]peer
+	peers map[net.Addr]Peer
 }
 
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
@@ -51,7 +55,7 @@ func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 		TCPTransportOpts: opts,
 		RPCch:            make(chan RPC),
 		mu:               sync.RWMutex{},
-		peers:            map[net.Addr]peer{},
+		peers:            make(map[net.Addr]Peer),
 	}
 }
 
@@ -66,6 +70,11 @@ func (t *TCPTransport) ListenAndAccept() error {
 
 	return nil
 }
+
+func (t *TCPTransport) GetListenAddress() string {
+	return t.ListenAddress
+}
+
 func (t *TCPTransport) acceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
@@ -97,14 +106,13 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 		}
 	}
 
-	rpc := &RPC{}
+	rpc := RPC{}
 	for {
-		if err := t.Decoder.Decode(conn, rpc); err != nil {
+		if err := t.Decoder.Decode(conn, &rpc); err != nil {
 			log.Printf("TCP read err: %v\n", err)
 			return
 		}
-		rpc.From = conn.RemoteAddr()
-		t.RPCch <- *rpc
+		t.RPCch <- rpc
 	}
 
 }
@@ -116,4 +124,12 @@ func (t *TCPTransport) Consume() <-chan RPC {
 func (t *TCPTransport) Close() error {
 	close(t.RPCch)
 	return t.listener.Close()
+}
+func (t *TCPTransport) Dial(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+	go t.handleConn(conn, true)
+	return nil
 }
