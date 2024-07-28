@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -25,6 +26,15 @@ type TCPTransportOpts struct {
 	HandlerFunc   HandlerFunc
 	Decoder       Coder
 	OnPeer        OnPeer
+}
+
+func DefaultTCPTransportOpts() TCPTransportOpts {
+	return TCPTransportOpts{
+		ListenAddress: ":3000",
+		HandlerFunc:   NOPHandlerFunc,
+		Decoder:       &DefaultCode{},
+		OnPeer:        DefaultPeerFunc,
+	}
 }
 
 type TCPTransport struct {
@@ -59,6 +69,9 @@ func (t *TCPTransport) ListenAndAccept() error {
 func (t *TCPTransport) acceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			return
+		}
 		if err != nil {
 			fmt.Println("listener accept error:", err)
 		}
@@ -98,4 +111,9 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 
 func (t *TCPTransport) Consume() <-chan RPC {
 	return t.RPCch
+}
+
+func (t *TCPTransport) Close() error {
+	close(t.RPCch)
+	return t.listener.Close()
 }

@@ -4,7 +4,8 @@ type peer interface {
 	Close() error
 }
 
-type transport interface {
+type Transport interface {
 	ListenAndAccept() error
 	Consume() <-chan RPC
+	Close() error
 }
