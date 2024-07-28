@@ -114,24 +114,24 @@ func (s *FileServer) OnPeer(peer p2p.Peer) error {
 
 func (s *FileServer) broadcast(msg *p2p.RPC) error {
 	//todo encode
-	code := &p2p.GobCode{}
+	var peers []io.Writer
 	for _, peer := range s.peers {
-		err := code.Encode(peer, msg)
-		if err != nil {
-			return err
-		}
+		peers = append(peers, peer)
+	}
+	mw := io.MultiWriter(peers...)
+	code := &p2p.GobCode{}
+	err := code.Encode(mw, msg)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
 func (s *FileServer) StoreData(key string, r io.Reader) error {
-	err := s.store.Write(key, r)
-	if err != nil {
-		return err
-	}
-
 	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, r)
+	r = io.TeeReader(r, buf)
+
+	err := s.store.Write(key, r)
 	if err != nil {
 		return err
 	}
